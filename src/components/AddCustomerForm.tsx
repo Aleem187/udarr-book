@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { getLocalDateTimeInputValue } from '@/lib/utils';
 
 interface AddCustomerFormProps {
-  onSubmit: (name: string, phone: string, amount: number, date?: string, currency?: 'INR' | 'RUB') => void;
+  onSubmit: (name: string, phone: string, amount: number, date?: string, currency?: 'RUB' | 'THB') => void;
   existingNames: string[];
 }
 
@@ -9,8 +10,8 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [amount, setAmount] = useState('');
-  const [givenDate, setGivenDate] = useState(() => new Date().toISOString().slice(0, 10));
-  const [currency, setCurrency] = useState<'INR' | 'RUB'>('INR');
+  const [givenDate, setGivenDate] = useState(() => getLocalDateTimeInputValue(new Date()));
+  const [currency, setCurrency] = useState<'RUB' | 'THB'>('THB');
   const [error, setError] = useState('');
   const [isExisting, setIsExisting] = useState(false);
 
@@ -40,15 +41,15 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
     setName('');
     setPhone('');
     setAmount('');
-    setGivenDate(new Date().toISOString().slice(0, 10));
-    setCurrency('INR');
+    setGivenDate(getLocalDateTimeInputValue(new Date()));
+    setCurrency('THB');
     setError('');
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 pt-2">
       {isExisting && (
-        <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5 text-sm text-amber-700 animate-fade-in">
+        <div className="flex items-center gap-2 rounded-2xl border border-[#f5d78a]/25 bg-[#f5d78a]/8 px-3 py-2.5 text-sm text-[#f5d78a] shadow-sm shadow-[#d4af37]/10 animate-fade-in">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" />
             <path d="M12 8v4M12 16h.01" />
@@ -58,7 +59,7 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
       )}
 
       <div>
-        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
           Customer Name
         </label>
         <input
@@ -66,13 +67,13 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
           value={name}
           onChange={(e) => { setName(e.target.value); setError(''); }}
           placeholder="e.g. Ramesh Kumar"
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 focus:bg-white transition"
+          className="w-full rounded-2xl border border-[#d4af37]/20 bg-[#102742] px-4 py-3 text-sm font-medium text-white placeholder:text-slate-400 focus:border-[#d4af37] focus:bg-[#102742] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20 transition"
           autoFocus
         />
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
           Phone Number
         </label>
         <input
@@ -81,13 +82,13 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           placeholder="e.g. 98765 43210"
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 focus:bg-white transition"
+          className="w-full rounded-2xl border border-[#d4af37]/20 bg-[#102742] px-4 py-3 text-sm font-medium text-white placeholder:text-slate-400 focus:border-[#d4af37] focus:bg-[#102742] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20 transition"
         />
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-          Amount (₹ / ₽)
+        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
+          Amount (฿ / ₽)
         </label>
         <input
           type="number"
@@ -95,43 +96,43 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
           value={amount}
           onChange={(e) => { setAmount(e.target.value); setError(''); }}
           placeholder="e.g. 500"
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-lg font-bold placeholder:text-slate-300 placeholder:font-normal focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 focus:bg-white transition"
+          className="w-full rounded-2xl border border-[#d4af37]/20 bg-[#102742] px-4 py-3 text-lg font-bold text-white placeholder:text-slate-400 placeholder:font-normal focus:border-[#d4af37] focus:bg-[#102742] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20 transition"
         />
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
-          Date Given
+        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
+          Date & Time Given
         </label>
         <input
-          type="date"
+          type="datetime-local"
           value={givenDate}
           onChange={(e) => { setGivenDate(e.target.value); setError(''); }}
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 focus:bg-white transition"
+          className="w-full rounded-2xl border border-[#d4af37]/20 bg-[#102742] px-4 py-3 text-sm font-medium text-white focus:border-[#d4af37] focus:bg-[#102742] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20 transition"
         />
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wide mb-1.5">
+        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
           Currency
         </label>
         <select
           value={currency}
-          onChange={(e) => setCurrency(e.target.value as 'INR' | 'RUB')}
-          className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-400 focus:bg-white transition"
+          onChange={(e) => setCurrency(e.target.value as 'RUB' | 'THB')}
+          className="w-full rounded-2xl border border-[#d4af37]/20 bg-[#102742] px-4 py-3 text-sm font-medium text-white focus:border-[#d4af37] focus:bg-[#102742] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20 transition"
         >
-          <option value="INR">Rupees (₹)</option>
+          <option value="THB">Thai Baht (฿)</option>
           <option value="RUB">Rubles (₽)</option>
         </select>
       </div>
 
       {error && (
-        <p className="text-sm text-rose-600 font-medium animate-fade-in">{error}</p>
+        <p className="text-sm font-medium text-rose-300 animate-fade-in">{error}</p>
       )}
 
       <button
         type="submit"
-        className="w-full py-3.5 bg-slate-900 text-white font-bold rounded-xl shadow-lg shadow-slate-900/20 active:scale-[0.98] hover:bg-slate-800 transition"
+        className="w-full rounded-2xl bg-gradient-to-r from-[#f5d78a] via-[#d4af37] to-[#b98c1e] py-3.5 text-base font-bold text-[#071521] shadow-[0_16px_32px_rgba(212,175,55,0.3)] transition hover:brightness-105 active:scale-[0.98]"
       >
         {isExisting ? 'Add to Balance' : 'Add Customer'}
       </button>

@@ -3,10 +3,11 @@ export interface Transaction {
   type: 'credit' | 'debit';
   amount: number;
   note?: string;
+  paymentMethod?: 'cash' | 'account';
   date: string;
 }
 
-export type CurrencyCode = 'INR' | 'RUB';
+export type CurrencyCode = 'RUB' | 'THB';
 
 export interface Customer {
   id: string;
@@ -17,4 +18,20 @@ export interface Customer {
   transactions: Transaction[];
   createdAt: string;
   updatedAt: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  actorUserId: string;
+  actorName: string;
+  customerId: string;
+  customerName: string;
+  amount: number;
+  createdAt: string;
+  read: boolean;
+}
+
+export interface UserProfile {
+  id: string;
+  name: string;
 }

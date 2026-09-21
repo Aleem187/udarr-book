@@ -1,5 +1,5 @@
 import type { Customer } from '@/types';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDateTime } from '@/lib/utils';
 
 interface HistoryViewProps {
   customer: Customer;
@@ -13,7 +13,7 @@ export function HistoryView({ customer }: HistoryViewProps) {
           Current Balance
         </p>
         <p className={`text-3xl font-bold ${customer.balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-          {formatCurrency(customer.balance, customer.currency || 'INR')}
+          {formatCurrency(customer.balance, customer.currency || 'THB')}
         </p>
         <p className="text-sm text-slate-500 mt-1">{customer.name}</p>
       </div>
@@ -53,14 +53,21 @@ export function HistoryView({ customer }: HistoryViewProps) {
                     {txn.type === 'credit' ? 'Udhaar given' : 'Payment received'}
                   </p>
                   <p className="text-xs text-slate-400">
-                    {formatDate(txn.date)}
+                    {formatDateTime(txn.date)}
                     {txn.note ? ` • ${txn.note}` : ''}
                   </p>
                 </div>
-                <p className={`text-sm font-bold ${txn.type === 'credit' ? 'text-rose-600' : 'text-emerald-600'}`}>
-                  {txn.type === 'credit' ? '+' : '−'}
-                  {formatCurrency(txn.amount, customer.currency || 'INR')}
-                </p>
+                <div className="text-right">
+                  <p className={`text-sm font-bold ${txn.type === 'credit' ? 'text-rose-600' : 'text-emerald-600'}`}>
+                    {txn.type === 'credit' ? '+' : '−'}
+                    {formatCurrency(txn.amount, customer.currency || 'THB')}
+                  </p>
+                  {txn.type === 'debit' && txn.paymentMethod && (
+                    <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                      {txn.paymentMethod === 'cash' ? 'Cash' : 'Account'}
+                    </p>
+                  )}
+                </div>
               </div>
             ))}
           </div>

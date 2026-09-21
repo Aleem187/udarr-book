@@ -31,7 +31,7 @@ export function useCustomers() {
   }, [customers]);
 
   const addOrUpdateCustomer = useCallback(
-    (name: string, phone: string, amount: number, date?: string, currency: CurrencyCode = 'INR') => {
+    (name: string, phone: string, amount: number, date?: string, currency: CurrencyCode = 'THB') => {
       const selectedDate = date ? new Date(date).toISOString() : new Date().toISOString();
       let addedNew = false;
 
@@ -45,7 +45,7 @@ export function useCustomers() {
           const updated: Customer = {
             ...existing,
             phone: phone || existing.phone,
-            currency: currency || existing.currency || 'INR',
+            currency: currency || existing.currency || 'THB',
             balance: existing.balance + amount,
             transactions: [
               {
@@ -89,7 +89,7 @@ export function useCustomers() {
     []
   );
 
-  const recordPayment = useCallback((customerId: string, amount: number, note?: string) => {
+  const recordPayment = useCallback((customerId: string, amount: number, note?: string, paymentMethod?: 'cash' | 'account') => {
     const now = new Date().toISOString();
     setCustomers((prev) =>
       prev.map((c) => {
@@ -99,6 +99,7 @@ export function useCustomers() {
           type: 'debit',
           amount,
           note,
+          paymentMethod,
           date: now,
         };
         return {
@@ -115,10 +116,31 @@ export function useCustomers() {
     setCustomers((prev) => prev.filter((c) => c.id !== customerId));
   }, []);
 
+  const deleteTransaction = useCallback((customerId: string, transactionId: string) => {
+    setCustomers((prev) =>
+      prev.map((c) => {
+        if (c.id !== customerId) return c;
+
+        const txn = c.transactions.find((item) => item.id === transactionId);
+        if (!txn) return c;
+
+        const nextBalance = txn.type === 'credit' ? c.balance - txn.amount : c.balance + txn.amount;
+
+        return {
+          ...c,
+          balance: nextBalance,
+          transactions: c.transactions.filter((item) => item.id !== transactionId),
+          updatedAt: new Date().toISOString(),
+        };
+      })
+    );
+  }, []);
+
   return {
     customers,
     addOrUpdateCustomer,
     recordPayment,
     deleteCustomer,
+    deleteTransaction,
   };
 }
