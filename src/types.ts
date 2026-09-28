@@ -4,10 +4,11 @@ export interface Transaction {
   amount: number;
   note?: string;
   paymentMethod?: 'cash' | 'account';
+  recordedBy?: string;
   date: string;
 }
 
-export type CurrencyCode = 'RUB' | 'THB';
+export type CurrencyCode = 'THB' | 'KZT' | 'USD';
 
 export interface Customer {
   id: string;

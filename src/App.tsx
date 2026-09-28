@@ -203,9 +203,14 @@ export default function App() {
     setSheet({ type: 'none' });
   };
 
-  const handlePay = (amount: number, note?: string, paymentMethod?: 'cash' | 'account') => {
+  const handlePay = (
+    amount: number,
+    note?: string,
+    paymentMethod?: 'cash' | 'account',
+    recordedBy?: string
+  ) => {
     if (sheet.type === 'pay') {
-      recordPayment(sheet.customer.id, amount, note, paymentMethod);
+      recordPayment(sheet.customer.id, amount, note, paymentMethod, recordedBy ?? currentUser.name);
       notifyUsersAboutPayment(sheet.customer.name, sheet.customer.id, amount);
     }
   };
@@ -461,6 +466,8 @@ export default function App() {
         {sheet.type === 'pay' && (
           <PaymentForm
             customer={sheet.customer}
+            defaultRecorderName={currentUser.name}
+            availableUsers={USERS}
             onSubmit={handlePay}
             onWhatsApp={(paymentDetails) => {
               try {

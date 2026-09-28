@@ -89,28 +89,38 @@ export function useCustomers() {
     []
   );
 
-  const recordPayment = useCallback((customerId: string, amount: number, note?: string, paymentMethod?: 'cash' | 'account') => {
-    const now = new Date().toISOString();
-    setCustomers((prev) =>
-      prev.map((c) => {
-        if (c.id !== customerId) return c;
-        const txn: Transaction = {
-          id: uid(),
-          type: 'debit',
-          amount,
-          note,
-          paymentMethod,
-          date: now,
-        };
-        return {
-          ...c,
-          balance: c.balance - amount,
-          transactions: [txn, ...c.transactions],
-          updatedAt: now,
-        };
-      })
-    );
-  }, []);
+  const recordPayment = useCallback(
+    (
+      customerId: string,
+      amount: number,
+      note?: string,
+      paymentMethod?: 'cash' | 'account',
+      recordedBy?: string
+    ) => {
+      const now = new Date().toISOString();
+      setCustomers((prev) =>
+        prev.map((c) => {
+          if (c.id !== customerId) return c;
+          const txn: Transaction = {
+            id: uid(),
+            type: 'debit',
+            amount,
+            note,
+            paymentMethod,
+            recordedBy: recordedBy?.trim() || undefined,
+            date: now,
+          };
+          return {
+            ...c,
+            balance: c.balance - amount,
+            transactions: [txn, ...c.transactions],
+            updatedAt: now,
+          };
+        })
+      );
+    },
+    []
+  );
 
   const deleteCustomer = useCallback((customerId: string) => {
     setCustomers((prev) => prev.filter((c) => c.id !== customerId));

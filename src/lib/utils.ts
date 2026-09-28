@@ -1,14 +1,18 @@
 import type { Customer, CurrencyCode } from '@/types';
 
+export function getCurrencySymbol(currency: CurrencyCode = 'THB'): string {
+  if (currency === 'KZT') return '₸';
+  if (currency === 'USD') return '$';
+  return '฿';
+}
+
 export function formatCurrency(amount: number, currency: CurrencyCode = 'THB'): string {
   const formatted = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
   }).format(Math.abs(amount));
 
-  if (currency === 'RUB') return `₽${formatted}`;
-  if (currency === 'THB') return `฿${formatted}`;
-  return `฿${formatted}`;
+  return `${getCurrencySymbol(currency)}${formatted}`;
 }
 
 export function formatDate(dateStr: string): string {

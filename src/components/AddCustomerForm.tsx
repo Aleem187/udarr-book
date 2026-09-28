@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { getLocalDateTimeInputValue } from '@/lib/utils';
+import type { CurrencyCode } from '@/types';
 
 interface AddCustomerFormProps {
-  onSubmit: (name: string, phone: string, amount: number, date?: string, currency?: 'RUB' | 'THB') => void;
+  onSubmit: (name: string, phone: string, amount: number, date?: string, currency?: CurrencyCode) => void;
   existingNames: string[];
 }
 
@@ -11,7 +12,7 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
   const [phone, setPhone] = useState('');
   const [amount, setAmount] = useState('');
   const [givenDate, setGivenDate] = useState(() => getLocalDateTimeInputValue(new Date()));
-  const [currency, setCurrency] = useState<'RUB' | 'THB'>('THB');
+  const [currency, setCurrency] = useState<CurrencyCode>('THB');
   const [error, setError] = useState('');
   const [isExisting, setIsExisting] = useState(false);
 
@@ -88,7 +89,7 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
 
       <div>
         <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
-          Amount (฿ / ₽)
+          Amount (฿ / ₸ / $)
         </label>
         <input
           type="number"
@@ -118,11 +119,12 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
         </label>
         <select
           value={currency}
-          onChange={(e) => setCurrency(e.target.value as 'RUB' | 'THB')}
+          onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
           className="w-full rounded-2xl border border-[#d4af37]/20 bg-[#102742] px-4 py-3 text-sm font-medium text-white focus:border-[#d4af37] focus:bg-[#102742] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20 transition"
         >
           <option value="THB">Thai Baht (฿)</option>
-          <option value="RUB">Rubles (₽)</option>
+          <option value="KZT">Tenge (₸)</option>
+          <option value="USD">US Dollar ($)</option>
         </select>
       </div>
 

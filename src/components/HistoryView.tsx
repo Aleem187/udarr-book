@@ -56,6 +56,11 @@ export function HistoryView({ customer }: HistoryViewProps) {
                     {formatDateTime(txn.date)}
                     {txn.note ? ` • ${txn.note}` : ''}
                   </p>
+                  {txn.type === 'debit' && txn.recordedBy && (
+                    <p className="mt-1 text-[10px] uppercase tracking-wide text-slate-500">
+                      Recorded by {txn.recordedBy}
+                    </p>
+                  )}
                 </div>
                 <div className="text-right">
                   <p className={`text-sm font-bold ${txn.type === 'credit' ? 'text-rose-600' : 'text-emerald-600'}`}>

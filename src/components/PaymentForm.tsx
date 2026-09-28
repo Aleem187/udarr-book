@@ -1,11 +1,18 @@
 import { useState } from 'react';
 import { MessageCircle } from 'lucide-react';
 import type { Customer } from '@/types';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, getCurrencySymbol } from '@/lib/utils';
 
 interface PaymentFormProps {
   customer: Customer;
-  onSubmit: (amount: number, note?: string, paymentMethod?: 'cash' | 'account') => void;
+  defaultRecorderName?: string;
+  availableUsers?: Array<{ name: string }>;
+  onSubmit: (
+    amount: number,
+    note?: string,
+    paymentMethod?: 'cash' | 'account',
+    recordedBy?: string
+  ) => void;
   onWhatsApp?: (paymentDetails: {
     amountPaid: number;
     paymentDate: string;
@@ -13,10 +20,17 @@ interface PaymentFormProps {
   }) => void;
 }
 
-export function PaymentForm({ customer, onSubmit, onWhatsApp }: PaymentFormProps) {
+export function PaymentForm({
+  customer,
+  defaultRecorderName = '',
+  availableUsers = [],
+  onSubmit,
+  onWhatsApp,
+}: PaymentFormProps) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'account'>('cash');
+  const [recordedBy, setRecordedBy] = useState(defaultRecorderName);
   const [error, setError] = useState('');
   const [paymentSummary, setPaymentSummary] = useState<{
     amountPaid: number;
@@ -46,10 +60,11 @@ export function PaymentForm({ customer, onSubmit, onWhatsApp }: PaymentFormProps
       remainingBalance: Math.max(customer.balance - amt, 0),
     };
 
-    onSubmit(amt, note.trim() || undefined, paymentMethod);
+    onSubmit(amt, note.trim() || undefined, paymentMethod, recordedBy.trim() || defaultRecorderName || undefined);
     setAmount('');
     setNote('');
     setPaymentMethod('cash');
+    setRecordedBy(defaultRecorderName);
     setError('');
     setCtaError('');
     setPaymentSummary(nextSummary);
@@ -96,7 +111,7 @@ export function PaymentForm({ customer, onSubmit, onWhatsApp }: PaymentFormProps
       <div className="rounded-[24px] border border-[#d4af37]/15 bg-[#0b1d31] p-4">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">Payment Details</p>
-          <span className="rounded-full bg-[#f5d78a]/10 px-2 py-1 text-[10px] font-medium text-[#f5d78a]">{currency === 'RUB' ? '₽' : '฿'} currency</span>
+          <span className="rounded-full bg-[#f5d78a]/10 px-2 py-1 text-[10px] font-medium text-[#f5d78a]">{getCurrencySymbol(currency)} currency</span>
         </div>
 
         <div>
@@ -105,7 +120,7 @@ export function PaymentForm({ customer, onSubmit, onWhatsApp }: PaymentFormProps
           </label>
           <div className="relative">
             <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-lg font-bold text-[#f5d78a]">
-              {currency === 'RUB' ? '₽' : '฿'}
+              {getCurrencySymbol(currency)}
             </span>
             <input
               type="number"
@@ -126,7 +141,7 @@ export function PaymentForm({ customer, onSubmit, onWhatsApp }: PaymentFormProps
                 onClick={() => setAmount(String(amt))}
                 className="rounded-xl border border-[#d4af37]/15 bg-[#0b1d31] px-2 py-2 text-sm font-semibold text-[#f5d78a] transition hover:border-[#d4af37]/35 hover:bg-[#122a45] active:scale-95"
               >
-                {currency === 'RUB' ? '₽' : '฿'}{amt}
+                {getCurrencySymbol(currency)}{amt}
               </button>
             ))}
             <button
@@ -167,6 +182,25 @@ export function PaymentForm({ customer, onSubmit, onWhatsApp }: PaymentFormProps
             className="w-full rounded-2xl border border-[#d4af37]/15 bg-[#102742] px-4 py-3 text-sm font-medium text-white placeholder:text-slate-400 focus:border-[#d4af37] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20 transition"
           />
         </div>
+      </div>
+
+      <div>
+        <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
+          Recorded by
+        </label>
+        <input
+          type="text"
+          list="payment-recorder-options"
+          value={recordedBy}
+          onChange={(e) => setRecordedBy(e.target.value)}
+          placeholder="Your name"
+          className="w-full rounded-2xl border border-[#d4af37]/15 bg-[#102742] px-4 py-3 text-sm font-medium text-white placeholder:text-slate-400 focus:border-[#d4af37] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20 transition"
+        />
+        <datalist id="payment-recorder-options">
+          {availableUsers.map((user) => (
+            <option key={user.name} value={user.name} />
+          ))}
+        </datalist>
       </div>
 
       {error && (

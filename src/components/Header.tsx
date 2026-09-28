@@ -34,8 +34,7 @@ export function Header({
               </svg>
             </div>
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-white">Khata Book</h1>
-              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-300">Udhaar Manager</p>
+              <h1 className="text-xl font-bold tracking-tight text-white">Whitehills Sports</h1>
             </div>
           </div>
 
