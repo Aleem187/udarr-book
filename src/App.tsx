@@ -1,24 +1,24 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useCustomers } from '@/hooks/useCustomers';
+import { useAuth } from '@/hooks/useAuth';
+import { useTransactionActivity, type TransactionActivity } from '@/hooks/useTransactionActivity';
 import { sortByRecent, buildWhatsAppLink, isDueToday, paginateItems } from '@/lib/utils';
-import type { Customer, NotificationItem, UserProfile } from '@/types';
+import { supabase } from '@/lib/supabase';
+import type { AppUser, Customer, NotificationItem } from '@/types';
 import { Header, SearchBar } from '@/components/Header';
 import { CustomerCard } from '@/components/CustomerCard';
 import { BottomSheet } from '@/components/BottomSheet';
 import { AddCustomerForm } from '@/components/AddCustomerForm';
 import { PaymentForm } from '@/components/PaymentForm';
 import { HistoryView } from '@/components/HistoryView';
+import { LoginScreen } from '@/components/LoginScreen';
+import { ManageUsersView } from '@/components/ManageUsersView';
+import { ActivityToastStack, type ActivityToastItem } from '@/components/ActivityToastStack';
 import { Bell, BookOpen, Users } from 'lucide-react';
 
-const USERS: UserProfile[] = [
-  { id: 'user-nadia', name: 'Nadia' },
-  { id: 'user-ali', name: 'Ali' },
-  { id: 'user-hamza', name: 'Hamza' },
-  { id: 'user-sara', name: 'Sara' },
-];
-
 const NOTIFICATION_STORAGE_PREFIX = 'udhaar-khata-notifications-v1';
-const SELECTED_USER_STORAGE_KEY = 'udhaar-khata-selected-user-v1';
+const PROCESSED_CHECKOUT_SESSIONS_KEY = 'udhaar-khata-processed-checkout-sessions-v1';
+const SYSTEM_ACTOR_ID = 'system-stripe';
 
 function uid(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -44,15 +44,6 @@ function saveNotifications(userId: string, items: NotificationItem[]) {
   window.dispatchEvent(new CustomEvent('udhaar:notification-update', { detail: { userId } }));
 }
 
-function loadSelectedUserId(): string {
-  try {
-    const value = localStorage.getItem(SELECTED_USER_STORAGE_KEY);
-    return USERS.some((user) => user.id === value) ? value! : USERS[0].id;
-  } catch {
-    return USERS[0].id;
-  }
-}
-
 function buildNotification(payload: Omit<NotificationItem, 'id' | 'createdAt' | 'read'>): NotificationItem {
   return {
     id: uid(),
@@ -62,54 +53,116 @@ function buildNotification(payload: Omit<NotificationItem, 'id' | 'createdAt' | 
   };
 }
 
+function loadProcessedCheckoutSessions(): string[] {
+  try {
+    const raw = localStorage.getItem(PROCESSED_CHECKOUT_SESSIONS_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function markCheckoutSessionProcessed(sessionId: string) {
+  const next = [sessionId, ...loadProcessedCheckoutSessions()].slice(0, 200);
+  localStorage.setItem(PROCESSED_CHECKOUT_SESSIONS_KEY, JSON.stringify(next));
+}
+
+function notifyAllUsersAboutCardPayment(roster: AppUser[], customerName: string, customerId: string, amount: number) {
+  const notification = buildNotification({
+    actorUserId: SYSTEM_ACTOR_ID,
+    actorName: 'Stripe Checkout',
+    customerId,
+    customerName,
+    amount,
+  });
+
+  roster.forEach((user) => {
+    const existing = loadNotifications(user.id);
+    const next = [notification, ...existing].slice(0, 100);
+    saveNotifications(user.id, next);
+  });
+}
+
 type SheetState =
   | { type: 'none' }
   | { type: 'add' }
   | { type: 'pay'; customer: Customer }
-  | { type: 'history'; customer: Customer };
+  | { type: 'history'; customer: Customer }
+  | { type: 'manage-users' };
 
 export default function App() {
-  const { customers, addOrUpdateCustomer, recordPayment, deleteCustomer, deleteTransaction } = useCustomers();
+  const { appUser, roster, loading: authLoading, signIn, signOut, refreshRoster } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#071521] text-sm font-medium text-slate-300">
+        Loading…
+      </div>
+    );
+  }
+
+  if (!appUser) {
+    return <LoginScreen onSignIn={signIn} />;
+  }
+
+  return (
+    <Dashboard appUser={appUser} roster={roster} onSignOut={signOut} onRosterChanged={refreshRoster} />
+  );
+}
+
+interface DashboardProps {
+  appUser: AppUser;
+  roster: AppUser[];
+  onSignOut: () => void;
+  onRosterChanged: () => void;
+}
+
+function Dashboard({ appUser, roster, onSignOut, onRosterChanged }: DashboardProps) {
+  const { customers, loading: customersLoading, addOrUpdateCustomer, recordPayment, deleteCustomer, deleteTransaction } = useCustomers(true);
   const [search, setSearch] = useState('');
   const [sheet, setSheet] = useState<SheetState>({ type: 'none' });
   const [confirmDelete, setConfirmDelete] = useState<Customer | null>(null);
-  const [selectedUserId, setSelectedUserId] = useState<string>(() => loadSelectedUserId());
-  const [notifications, setNotifications] = useState<NotificationItem[]>(() => loadNotifications(loadSelectedUserId()));
+  const [notifications, setNotifications] = useState<NotificationItem[]>(() => loadNotifications(appUser.id));
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [whatsAppError, setWhatsAppError] = useState('');
+  const [dataError, setDataError] = useState('');
+  const [checkoutNotice, setCheckoutNotice] = useState<{ tone: 'success' | 'error' | 'info'; message: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 12;
+  const checkoutHandledRef = useRef(false);
+  const [activityToasts, setActivityToasts] = useState<ActivityToastItem[]>([]);
 
-  const currentUser = USERS.find((user) => user.id === selectedUserId) ?? USERS[0];
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  const handleTransactionActivity = (activity: TransactionActivity) => {
+    const toastId = uid();
+    setActivityToasts((prev) => [...prev, { ...activity, toastId }]);
+    setTimeout(() => {
+      setActivityToasts((prev) => prev.filter((t) => t.toastId !== toastId));
+    }, 6000);
+  };
+
+  useTransactionActivity(customers, roster, appUser.id, handleTransactionActivity);
+
   useEffect(() => {
-    localStorage.setItem(SELECTED_USER_STORAGE_KEY, selectedUserId);
-    setNotifications(loadNotifications(selectedUserId));
-  }, [selectedUserId]);
+    setNotifications(loadNotifications(appUser.id));
+  }, [appUser.id]);
 
   useEffect(() => {
     const syncNotifications = () => {
-      setNotifications(loadNotifications(selectedUserId));
+      setNotifications(loadNotifications(appUser.id));
     };
 
     const onStorage = (event: StorageEvent) => {
       if (!event.key) return;
-      if (event.key.startsWith(NOTIFICATION_STORAGE_PREFIX) || event.key === SELECTED_USER_STORAGE_KEY) {
+      if (event.key.startsWith(NOTIFICATION_STORAGE_PREFIX)) {
         syncNotifications();
       }
     };
 
-    const onNotificationUpdate = (event: Event) => {
-      const customEvent = event as CustomEvent<{ userId?: string }>;
-      if (!customEvent.detail || !customEvent.detail.userId) {
-        syncNotifications();
-        return;
-      }
-
-      if (customEvent.detail.userId === selectedUserId || customEvent.detail.userId !== selectedUserId) {
-        syncNotifications();
-      }
+    const onNotificationUpdate = () => {
+      syncNotifications();
     };
 
     window.addEventListener('storage', onStorage);
@@ -118,7 +171,68 @@ export default function App() {
       window.removeEventListener('storage', onStorage);
       window.removeEventListener('udhaar:notification-update', onNotificationUpdate);
     };
-  }, [selectedUserId]);
+  }, [appUser.id]);
+
+  useEffect(() => {
+    if (checkoutHandledRef.current) return;
+    const params = new URLSearchParams(window.location.search);
+    const checkoutStatus = params.get('checkout');
+    if (!checkoutStatus) return;
+
+    checkoutHandledRef.current = true;
+    window.history.replaceState(null, '', window.location.pathname);
+
+    if (checkoutStatus === 'cancelled') {
+      setCheckoutNotice({ tone: 'info', message: 'Card checkout was cancelled — no payment was recorded.' });
+      return;
+    }
+
+    if (checkoutStatus !== 'success') return;
+
+    const sessionId = params.get('session_id');
+    if (!sessionId || loadProcessedCheckoutSessions().includes(sessionId)) return;
+
+    (async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('verify-checkout-session', {
+          body: { sessionId },
+        });
+
+        if (error || !data?.paid) {
+          setCheckoutNotice({
+            tone: 'error',
+            message: error?.message || 'Could not verify the card payment with Stripe — balance was not updated.',
+          });
+          return;
+        }
+
+        const customerId = data.customerId as string | null;
+        const customerName = data.customerName as string | null;
+        const amount = data.amount as number | null;
+
+        if (!customerId || !amount) {
+          setCheckoutNotice({
+            tone: 'error',
+            message: 'Card payment verified but customer details were missing — balance was not updated.',
+          });
+          return;
+        }
+
+        await recordPayment(customerId, amount, 'Card payment via Stripe Checkout', 'card', 'Stripe Checkout');
+        notifyAllUsersAboutCardPayment(roster, customerName ?? 'Customer', customerId, amount);
+        markCheckoutSessionProcessed(sessionId);
+        setCheckoutNotice({
+          tone: 'success',
+          message: `Card payment${customerName ? ` from ${customerName}` : ''} verified — balance updated.`,
+        });
+      } catch (err) {
+        setCheckoutNotice({
+          tone: 'error',
+          message: err instanceof Error ? err.message : 'Failed to verify card payment.',
+        });
+      }
+    })();
+  }, [recordPayment, roster]);
 
   const totalBalance = useMemo(
     () => customers.reduce((sum, c) => sum + Math.max(0, c.balance), 0),
@@ -152,27 +266,27 @@ export default function App() {
     const next = notifications.map((item) =>
       item.id === notificationId ? { ...item, read: true } : item
     );
-    saveNotifications(selectedUserId, next);
+    saveNotifications(appUser.id, next);
     setNotifications(next);
   };
 
   const markAllNotificationsRead = () => {
     const next = notifications.map((item) => ({ ...item, read: true }));
-    saveNotifications(selectedUserId, next);
+    saveNotifications(appUser.id, next);
     setNotifications(next);
   };
 
   const notifyUsersAboutCredit = (customerName: string, customerId: string, amount: number) => {
     const notification = buildNotification({
-      actorUserId: currentUser.id,
-      actorName: currentUser.name,
+      actorUserId: appUser.id,
+      actorName: appUser.name,
       customerId,
       customerName,
       amount,
     });
 
-    USERS.forEach((user) => {
-      if (user.id === currentUser.id) return;
+    roster.forEach((user) => {
+      if (user.id === appUser.id) return;
       const existing = loadNotifications(user.id);
       const next = [notification, ...existing].slice(0, 100);
       saveNotifications(user.id, next);
@@ -181,37 +295,45 @@ export default function App() {
 
   const notifyUsersAboutPayment = (customerName: string, customerId: string, amount: number) => {
     const notification = buildNotification({
-      actorUserId: currentUser.id,
-      actorName: currentUser.name,
+      actorUserId: appUser.id,
+      actorName: appUser.name,
       customerId,
       customerName,
       amount,
     });
 
-    USERS.forEach((user) => {
-      if (user.id === currentUser.id) return;
+    roster.forEach((user) => {
+      if (user.id === appUser.id) return;
       const existing = loadNotifications(user.id);
       const next = [notification, ...existing].slice(0, 100);
       saveNotifications(user.id, next);
     });
   };
 
-  const handleAdd = (name: string, phone: string, amount: number, date?: string, currency?: Customer['currency']) => {
-    const createdCustomerId = addOrUpdateCustomer(name, phone, amount, date, currency || 'THB');
-    const customerKey = `${name.trim()}-${Date.now()}`;
-    notifyUsersAboutCredit(name.trim(), createdCustomerId ? customerKey : customerKey, amount);
-    setSheet({ type: 'none' });
+  const handleAdd = async (name: string, phone: string, amount: number, date?: string, currency?: Customer['currency']) => {
+    try {
+      await addOrUpdateCustomer(name, phone, amount, date, currency || 'KZT');
+      notifyUsersAboutCredit(name.trim(), `${name.trim()}-${Date.now()}`, amount);
+      setDataError('');
+      setSheet({ type: 'none' });
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : 'Failed to save customer. Please try again.');
+    }
   };
 
-  const handlePay = (
+  const handlePay = async (
     amount: number,
     note?: string,
     paymentMethod?: 'cash' | 'account',
     recordedBy?: string
   ) => {
-    if (sheet.type === 'pay') {
-      recordPayment(sheet.customer.id, amount, note, paymentMethod, recordedBy ?? currentUser.name);
+    if (sheet.type !== 'pay') return;
+    try {
+      await recordPayment(sheet.customer.id, amount, note, paymentMethod, recordedBy ?? appUser.name);
       notifyUsersAboutPayment(sheet.customer.name, sheet.customer.id, amount);
+      setDataError('');
+    } catch (error) {
+      setDataError(error instanceof Error ? error.message : 'Failed to record payment. Please try again.');
     }
   };
 
@@ -226,7 +348,7 @@ export default function App() {
       customer.name,
       customer.balance,
       givenDate,
-      customer.currency || 'THB'
+      customer.currency || 'KZT'
     );
 
     window.open(link, '_blank', 'noopener,noreferrer');
@@ -245,7 +367,7 @@ export default function App() {
       customer.name,
       customer.balance,
       customer.createdAt,
-      customer.currency || 'THB',
+      customer.currency || 'KZT',
       {
         amountPaid: paymentDetails.amountPaid,
         paymentDate: paymentDetails.paymentDate,
@@ -262,15 +384,20 @@ export default function App() {
         <Header
           totalBalance={totalBalance}
           customerCount={customers.length}
-          currentUser={currentUser}
-          users={USERS}
+          currentUser={appUser}
           unreadCount={unreadCount}
           onAddClick={() => setSheet({ type: 'add' })}
           onToggleNotifications={() => {
             setNotificationsOpen((value) => !value);
             if (!notificationsOpen) markAllNotificationsRead();
           }}
-          onUserChange={(userId) => setSelectedUserId(userId)}
+          onManageUsers={() => setSheet({ type: 'manage-users' })}
+          onSignOut={onSignOut}
+        />
+
+        <ActivityToastStack
+          toasts={activityToasts}
+          onDismiss={(toastId) => setActivityToasts((prev) => prev.filter((t) => t.toastId !== toastId))}
         />
 
         {notificationsOpen && (
@@ -315,7 +442,7 @@ export default function App() {
                         </p>
                         <p className="mt-1 text-sm font-bold text-white">{item.customerName}</p>
                         <p className="mt-1 text-sm text-[#f5d78a]">
-                          ฿{new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(item.amount)}
+                          ₸{new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(item.amount)}
                         </p>
                       </div>
                       {!item.read && <span className="mt-1 h-2.5 w-2.5 rounded-full bg-[#d4af37]" />}
@@ -334,10 +461,44 @@ export default function App() {
             </div>
           )}
 
+          {dataError && (
+            <div className="-mt-4 mb-4 flex items-start justify-between gap-3 rounded-2xl border border-rose-300/40 bg-rose-500/10 px-4 py-3 text-sm font-medium text-rose-200">
+              <span>{dataError}</span>
+              <button
+                type="button"
+                onClick={() => setDataError('')}
+                className="shrink-0 text-xs font-semibold uppercase tracking-wide opacity-70 hover:opacity-100"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {checkoutNotice && (
+            <div
+              className={`-mt-4 mb-4 flex items-start justify-between gap-3 rounded-2xl border px-4 py-3 text-sm font-medium ${
+                checkoutNotice.tone === 'success'
+                  ? 'border-emerald-300/40 bg-emerald-500/10 text-emerald-200'
+                  : checkoutNotice.tone === 'error'
+                  ? 'border-rose-300/40 bg-rose-500/10 text-rose-200'
+                  : 'border-[#d4af37]/30 bg-[#f5d78a]/10 text-[#f5d78a]'
+              }`}
+            >
+              <span>{checkoutNotice.message}</span>
+              <button
+                type="button"
+                onClick={() => setCheckoutNotice(null)}
+                className="shrink-0 text-xs font-semibold uppercase tracking-wide opacity-70 hover:opacity-100"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+
           <div className="relative -mt-5 mb-5 grid gap-3 sm:grid-cols-3">
             <div className="rounded-[24px] border border-[#d4af37]/20 bg-[#0d1d33] p-4 shadow-[0_16px_32px_rgba(2,6,23,0.2)]">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Outstanding</p>
-              <p className="mt-2 text-xl font-bold text-white">฿{new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(totalBalance)}</p>
+              <p className="mt-2 text-xl font-bold text-white">₸{new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(totalBalance)}</p>
             </div>
             <div className="rounded-[24px] border border-[#d4af37]/20 bg-[#0d1d33] p-4 shadow-[0_16px_32px_rgba(2,6,23,0.2)]">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Customers</p>
@@ -352,7 +513,14 @@ export default function App() {
           <SearchBar value={search} onChange={setSearch} />
 
           <main className="flex-1 pb-28">
-            {customers.length === 0 ? (
+            {customersLoading ? (
+              <div className="flex flex-col items-center justify-center px-6 pt-16 text-center">
+                <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-[#0d1d33] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-[#d4af37]/20">
+                  <BookOpen size={36} className="text-[#f5d78a] animate-pulse" />
+                </div>
+                <h3 className="mb-1 text-lg font-bold text-white">Loading customers…</h3>
+              </div>
+            ) : customers.length === 0 ? (
               <div className="flex flex-col items-center justify-center px-6 pt-16 text-center">
                 <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-3xl bg-[#0d1d33] shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] ring-1 ring-[#d4af37]/20">
                   <BookOpen size={36} className="text-[#f5d78a]" />
@@ -402,9 +570,19 @@ export default function App() {
                       onDetails={() => setSheet({ type: 'history', customer })}
                       onDelete={() => setConfirmDelete(customer)}
                       onAddCredit={(amount) => {
-                        addOrUpdateCustomer(customer.name, customer.phone, amount, new Date().toISOString(), customer.currency || 'THB');
+                        addOrUpdateCustomer(customer.name, customer.phone, amount, new Date().toISOString(), customer.currency || 'KZT')
+                          .then(() => setDataError(''))
+                          .catch((error) =>
+                            setDataError(error instanceof Error ? error.message : 'Failed to add credit. Please try again.')
+                          );
                       }}
-                      onDeleteTransaction={(transactionId) => deleteTransaction(customer.id, transactionId)}
+                      onDeleteTransaction={(transactionId) => {
+                        deleteTransaction(customer.id, transactionId)
+                          .then(() => setDataError(''))
+                          .catch((error) =>
+                            setDataError(error instanceof Error ? error.message : 'Failed to delete transaction. Please try again.')
+                          );
+                      }}
                     />
                   ))}
                 </div>
@@ -466,8 +644,8 @@ export default function App() {
         {sheet.type === 'pay' && (
           <PaymentForm
             customer={sheet.customer}
-            defaultRecorderName={currentUser.name}
-            availableUsers={USERS}
+            defaultRecorderName={appUser.name}
+            availableUsers={roster}
             onSubmit={handlePay}
             onWhatsApp={(paymentDetails) => {
               try {
@@ -491,6 +669,14 @@ export default function App() {
         {sheet.type === 'history' && <HistoryView customer={sheet.customer} />}
       </BottomSheet>
 
+      <BottomSheet
+        open={sheet.type === 'manage-users'}
+        onClose={() => setSheet({ type: 'none' })}
+        title="Manage Staff Users"
+      >
+        <ManageUsersView roster={roster} currentUserId={appUser.id} onChanged={onRosterChanged} />
+      </BottomSheet>
+
       {confirmDelete && (
         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center">
           <div
@@ -511,8 +697,13 @@ export default function App() {
               </button>
               <button
                 onClick={() => {
-                  deleteCustomer(confirmDelete.id);
+                  const target = confirmDelete;
                   setConfirmDelete(null);
+                  deleteCustomer(target.id)
+                    .then(() => setDataError(''))
+                    .catch((error) =>
+                      setDataError(error instanceof Error ? error.message : 'Failed to delete customer. Please try again.')
+                    );
                 }}
                 className="flex-1 py-3 rounded-xl font-semibold text-white bg-rose-600 hover:bg-rose-700 active:scale-95 transition"
               >

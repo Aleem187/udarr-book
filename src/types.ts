@@ -3,12 +3,12 @@ export interface Transaction {
   type: 'credit' | 'debit';
   amount: number;
   note?: string;
-  paymentMethod?: 'cash' | 'account';
+  paymentMethod?: 'cash' | 'account' | 'card';
   recordedBy?: string;
   date: string;
 }
 
-export type CurrencyCode = 'THB' | 'KZT' | 'USD';
+export type CurrencyCode = 'KZT' | 'USD';
 
 export interface Customer {
   id: string;
@@ -32,7 +32,9 @@ export interface NotificationItem {
   read: boolean;
 }
 
-export interface UserProfile {
+export interface AppUser {
   id: string;
+  email: string;
   name: string;
+  isAdmin: boolean;
 }

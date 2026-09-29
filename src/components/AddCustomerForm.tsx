@@ -12,7 +12,7 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
   const [phone, setPhone] = useState('');
   const [amount, setAmount] = useState('');
   const [givenDate, setGivenDate] = useState(() => getLocalDateTimeInputValue(new Date()));
-  const [currency, setCurrency] = useState<CurrencyCode>('THB');
+  const [currency, setCurrency] = useState<CurrencyCode>('KZT');
   const [error, setError] = useState('');
   const [isExisting, setIsExisting] = useState(false);
 
@@ -43,7 +43,7 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
     setPhone('');
     setAmount('');
     setGivenDate(getLocalDateTimeInputValue(new Date()));
-    setCurrency('THB');
+    setCurrency('KZT');
     setError('');
   };
 
@@ -89,7 +89,7 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
 
       <div>
         <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
-          Amount (฿ / ₸ / $)
+          Amount (₸ / $)
         </label>
         <input
           type="number"
@@ -122,7 +122,6 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
           onChange={(e) => setCurrency(e.target.value as CurrencyCode)}
           className="w-full rounded-2xl border border-[#d4af37]/20 bg-[#102742] px-4 py-3 text-sm font-medium text-white focus:border-[#d4af37] focus:bg-[#102742] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20 transition"
         >
-          <option value="THB">Thai Baht (฿)</option>
           <option value="KZT">Tenge (₸)</option>
           <option value="USD">US Dollar ($)</option>
         </select>

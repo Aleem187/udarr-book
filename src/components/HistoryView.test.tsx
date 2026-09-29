@@ -8,7 +8,7 @@ describe('HistoryView', () => {
       id: 'customer-1',
       name: 'Russian',
       phone: '03454718520',
-      currency: 'THB',
+      currency: 'KZT',
       balance: 500,
       transactions: [
         {

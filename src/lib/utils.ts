@@ -1,12 +1,11 @@
 import type { Customer, CurrencyCode } from '@/types';
 
-export function getCurrencySymbol(currency: CurrencyCode = 'THB'): string {
-  if (currency === 'KZT') return '₸';
+export function getCurrencySymbol(currency: CurrencyCode = 'KZT'): string {
   if (currency === 'USD') return '$';
-  return '฿';
+  return '₸';
 }
 
-export function formatCurrency(amount: number, currency: CurrencyCode = 'THB'): string {
+export function formatCurrency(amount: number, currency: CurrencyCode = 'KZT'): string {
   const formatted = new Intl.NumberFormat('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2,
@@ -126,7 +125,7 @@ export function buildWhatsAppLink(
   name: string,
   balance: number,
   givenDate?: string,
-  currency: CurrencyCode = 'THB',
+  currency: CurrencyCode = 'KZT',
   paymentDetails?: {
     amountPaid: number;
     paymentDate?: string;

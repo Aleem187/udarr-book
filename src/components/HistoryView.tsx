@@ -13,7 +13,7 @@ export function HistoryView({ customer }: HistoryViewProps) {
           Current Balance
         </p>
         <p className={`text-3xl font-bold ${customer.balance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-          {formatCurrency(customer.balance, customer.currency || 'THB')}
+          {formatCurrency(customer.balance, customer.currency || 'KZT')}
         </p>
         <p className="text-sm text-slate-500 mt-1">{customer.name}</p>
       </div>
@@ -65,11 +65,11 @@ export function HistoryView({ customer }: HistoryViewProps) {
                 <div className="text-right">
                   <p className={`text-sm font-bold ${txn.type === 'credit' ? 'text-rose-600' : 'text-emerald-600'}`}>
                     {txn.type === 'credit' ? '+' : '−'}
-                    {formatCurrency(txn.amount, customer.currency || 'THB')}
+                    {formatCurrency(txn.amount, customer.currency || 'KZT')}
                   </p>
                   {txn.type === 'debit' && txn.paymentMethod && (
                     <p className="text-[10px] uppercase tracking-wide text-slate-400">
-                      {txn.paymentMethod === 'cash' ? 'Cash' : 'Account'}
+                      {txn.paymentMethod === 'cash' ? 'Cash' : txn.paymentMethod === 'card' ? 'Card' : 'Account'}
                     </p>
                   )}
                 </div>

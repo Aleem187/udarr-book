@@ -1,26 +1,26 @@
-import { Bell, Plus, Search } from 'lucide-react';
-import type { UserProfile } from '@/types';
+import { Bell, LogOut, Plus, Search, Users as UsersIcon } from 'lucide-react';
+import type { AppUser } from '@/types';
 
 interface HeaderProps {
   totalBalance: number;
   customerCount: number;
-  currentUser: UserProfile;
-  users: UserProfile[];
+  currentUser: AppUser;
   unreadCount: number;
   onAddClick: () => void;
   onToggleNotifications: () => void;
-  onUserChange: (userId: string) => void;
+  onManageUsers: () => void;
+  onSignOut: () => void;
 }
 
 export function Header({
   totalBalance,
   customerCount,
   currentUser,
-  users,
   unreadCount,
   onAddClick,
   onToggleNotifications,
-  onUserChange,
+  onManageUsers,
+  onSignOut,
 }: HeaderProps) {
   return (
     <header className="safe-top overflow-hidden bg-[radial-gradient(circle_at_top_left,_rgba(212,175,55,0.18),_transparent_25%),radial-gradient(circle_at_top_right,_rgba(59,130,246,0.2),_transparent_30%),linear-gradient(140deg,_#071521_0%,_#0b1d31_35%,_#112a46_100%)] text-white shadow-[0_26px_80px_rgba(2,6,23,0.4)]">
@@ -53,21 +53,34 @@ export function Header({
               )}
             </button>
 
-            <label className="relative hidden sm:block">
-              <select
-                value={currentUser.id}
-                onChange={(event) => onUserChange(event.target.value)}
-                aria-label="Select active user"
-                className="appearance-none rounded-2xl border border-[#d4af37]/30 bg-white/5 px-3 py-2.5 pr-9 text-sm font-medium text-white shadow-lg shadow-[#020817]/20 outline-none backdrop-blur-sm transition hover:bg-white/10"
+            <div className="hidden items-center gap-2 rounded-2xl border border-[#d4af37]/30 bg-white/5 px-3 py-2 sm:flex">
+              <div className="text-right leading-tight">
+                <p className="text-sm font-semibold text-white">{currentUser.name}</p>
+                <p className="text-[10px] uppercase tracking-wide text-slate-400">
+                  {currentUser.isAdmin ? 'Admin' : 'Staff'}
+                </p>
+              </div>
+            </div>
+
+            {currentUser.isAdmin && (
+              <button
+                onClick={onManageUsers}
+                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#d4af37]/40 bg-white/5 text-white shadow-lg shadow-[#020817]/30 backdrop-blur-sm transition hover:bg-white/10 active:scale-95"
+                aria-label="Manage users"
+                type="button"
               >
-                {users.map((user) => (
-                  <option key={user.id} value={user.id} className="text-slate-900">
-                    {user.name}
-                  </option>
-                ))}
-              </select>
-              <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-[#f5d78a]">▾</span>
-            </label>
+                <UsersIcon size={18} />
+              </button>
+            )}
+
+            <button
+              onClick={onSignOut}
+              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-[#d4af37]/40 bg-white/5 text-white shadow-lg shadow-[#020817]/30 backdrop-blur-sm transition hover:bg-white/10 active:scale-95"
+              aria-label="Sign out"
+              type="button"
+            >
+              <LogOut size={18} />
+            </button>
 
             <button
               onClick={onAddClick}
@@ -92,7 +105,7 @@ export function Header({
 
           <div className="mt-3 flex items-end justify-between gap-3">
             <span className="text-3xl font-black tracking-tight text-white sm:text-4xl">
-              ฿{new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(totalBalance)}
+              ₸{new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(totalBalance)}
             </span>
             <div className="hidden rounded-full border border-[#d4af37]/20 bg-[#081827]/60 px-3 py-1.5 text-[11px] font-medium text-[#f5d78a] sm:block">
               Live overview

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { MessageCircle } from 'lucide-react';
 import type { Customer } from '@/types';
 import { formatCurrency, getCurrencySymbol } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 
 interface PaymentFormProps {
   customer: Customer;
@@ -29,20 +30,21 @@ export function PaymentForm({
 }: PaymentFormProps) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'account'>('cash');
+  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'account' | 'card'>('cash');
   const [recordedBy, setRecordedBy] = useState(defaultRecorderName);
   const [error, setError] = useState('');
+  const [isRedirectingToCheckout, setIsRedirectingToCheckout] = useState(false);
   const [paymentSummary, setPaymentSummary] = useState<{
     amountPaid: number;
     paymentDate: string;
     remainingBalance: number;
   } | null>(null);
   const [ctaError, setCtaError] = useState('');
-  const currency = customer.currency || 'THB';
+  const currency = customer.currency || 'KZT';
 
   const quickAmounts = [100, 200, 500, 1000];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) {
@@ -51,6 +53,27 @@ export function PaymentForm({
     }
     if (amt > customer.balance) {
       setError(`Amount exceeds outstanding balance of ${formatCurrency(customer.balance, currency)}.`);
+      return;
+    }
+
+    if (paymentMethod === 'card') {
+      setError('');
+      setIsRedirectingToCheckout(true);
+      const { data, error: invokeError } = await supabase.functions.invoke('create-checkout-session', {
+        body: {
+          customerId: customer.id,
+          customerName: customer.name,
+          amount: amt,
+          currency,
+          origin: window.location.origin,
+        },
+      });
+      if (invokeError || !data?.url) {
+        setIsRedirectingToCheckout(false);
+        setError(invokeError?.message || 'Could not start card checkout. Please try again.');
+        return;
+      }
+      window.location.href = data.url;
       return;
     }
 
@@ -92,7 +115,7 @@ export function PaymentForm({
             <h3 className="mt-2 text-lg font-bold text-white">{customer.name}</h3>
           </div>
           <div className="rounded-full border border-[#d4af37]/20 bg-[#0b1d31] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#f5d78a]">
-            {customer.currency || 'THB'}
+            {customer.currency || 'KZT'}
           </div>
         </div>
 
@@ -162,11 +185,12 @@ export function PaymentForm({
           </label>
           <select
             value={paymentMethod}
-            onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'account')}
+            onChange={(e) => setPaymentMethod(e.target.value as 'cash' | 'account' | 'card')}
             className="w-full rounded-2xl border border-[#d4af37]/15 bg-[#102742] px-4 py-3 text-sm font-medium text-white focus:border-[#d4af37] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20 transition"
           >
             <option value="cash">Cash</option>
             <option value="account">Account</option>
+            <option value="card">Card</option>
           </select>
         </div>
 
@@ -211,9 +235,12 @@ export function PaymentForm({
 
       <button
         type="submit"
-        className="w-full rounded-2xl bg-gradient-to-r from-[#f5d78a] via-[#d4af37] to-[#b98c1e] py-3.5 text-base font-bold text-[#071521] shadow-[0_18px_35px_rgba(212,175,55,0.26)] transition hover:brightness-105 active:scale-[0.98]"
+        disabled={isRedirectingToCheckout}
+        className="w-full rounded-2xl bg-gradient-to-r from-[#f5d78a] via-[#d4af37] to-[#b98c1e] py-3.5 text-base font-bold text-[#071521] shadow-[0_18px_35px_rgba(212,175,55,0.26)] transition hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        Record Payment
+        {paymentMethod === 'card'
+          ? (isRedirectingToCheckout ? 'Redirecting to checkout…' : 'Pay with Card')
+          : 'Record Payment'}
       </button>
 
       {paymentSummary && (
@@ -226,11 +253,11 @@ export function PaymentForm({
             <div className="mt-3 space-y-1.5">
               <div className="flex items-center justify-between gap-3">
                 <span className="text-slate-300">Received</span>
-                <span className="font-bold text-white">{formatCurrency(paymentSummary.amountPaid, customer.currency || 'THB')}</span>
+                <span className="font-bold text-white">{formatCurrency(paymentSummary.amountPaid, customer.currency || 'KZT')}</span>
               </div>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-slate-300">Remaining</span>
-                <span className="font-bold text-white">{formatCurrency(paymentSummary.remainingBalance, customer.currency || 'THB')}</span>
+                <span className="font-bold text-white">{formatCurrency(paymentSummary.remainingBalance, customer.currency || 'KZT')}</span>
               </div>
             </div>
           </div>

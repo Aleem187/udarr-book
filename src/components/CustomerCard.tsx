@@ -65,7 +65,7 @@ export function CustomerCard({ customer, onWhatsApp, onPay, onDetails, onDelete,
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Balance</p>
             <p className={`mt-1 text-2xl font-black tracking-tight ${hasDebt ? 'text-rose-300' : 'text-[#f5d78a]'}`}>
-              {formatCurrency(customer.balance, customer.currency || 'THB')}
+              {formatCurrency(customer.balance, customer.currency || 'KZT')}
             </p>
           </div>
           <button
@@ -109,7 +109,7 @@ export function CustomerCard({ customer, onWhatsApp, onPay, onDetails, onDelete,
                 >
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-bold text-white">
-                      {formatCurrency(txn.amount, customer.currency || 'THB')}
+                      {formatCurrency(txn.amount, customer.currency || 'KZT')}
                     </p>
                     <p className="text-[11px] text-slate-400">{formatDateTime(txn.date)}</p>
                   </div>

@@ -17,7 +17,7 @@ describe('normalizePhoneForWhatsApp', () => {
 
 describe('buildWhatsAppLink', () => {
   it('creates a valid wa.me link with a prefilled payment message', () => {
-    const link = buildWhatsAppLink('03001234567', 'Ali', 2500, '2026-09-21', 'THB', {
+    const link = buildWhatsAppLink('03001234567', 'Ali', 2500, '2026-09-21', 'KZT', {
       amountPaid: 1200,
       paymentDate: '2026-09-21',
       remainingBalance: 1300,
@@ -25,8 +25,8 @@ describe('buildWhatsAppLink', () => {
 
     expect(link).toContain('https://wa.me/923001234567');
     expect(link).toContain(encodeURIComponent('Hi Ali'));
-    expect(link).toContain(encodeURIComponent('Amount received: ฿1,200'));
-    expect(link).toContain(encodeURIComponent('Remaining balance: ฿1,300'));
+    expect(link).toContain(encodeURIComponent('Amount received: ₸1,200'));
+    expect(link).toContain(encodeURIComponent('Remaining balance: ₸1,300'));
   });
 
   it('throws a clear error when the phone is invalid', () => {
