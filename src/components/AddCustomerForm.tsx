@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getLocalDateTimeInputValue } from '@/lib/utils';
+import { COUNTRIES, DEFAULT_COUNTRY_CODE, getCountryByCode } from '@/lib/countries';
 import type { CurrencyCode } from '@/types';
 
 interface AddCustomerFormProps {
@@ -9,12 +10,15 @@ interface AddCustomerFormProps {
 
 export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProps) {
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY_CODE);
+  const [localPhone, setLocalPhone] = useState('');
   const [amount, setAmount] = useState('');
   const [givenDate, setGivenDate] = useState(() => getLocalDateTimeInputValue(new Date()));
   const [currency, setCurrency] = useState<CurrencyCode>('KZT');
   const [error, setError] = useState('');
   const [isExisting, setIsExisting] = useState(false);
+
+  const dialCode = getCountryByCode(countryCode)?.dialCode ?? '';
 
   useEffect(() => {
     if (!name.trim()) {
@@ -38,9 +42,13 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
       setError('Please enter a valid amount.');
       return;
     }
-    onSubmit(name.trim(), phone.trim(), amt, givenDate, currency);
+    const digitsOnly = localPhone.replace(/\D/g, '');
+    const phone = digitsOnly ? `${dialCode} ${digitsOnly}` : '';
+
+    onSubmit(name.trim(), phone, amt, givenDate, currency);
     setName('');
-    setPhone('');
+    setCountryCode(DEFAULT_COUNTRY_CODE);
+    setLocalPhone('');
     setAmount('');
     setGivenDate(getLocalDateTimeInputValue(new Date()));
     setCurrency('KZT');
@@ -77,14 +85,34 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
         <label className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.18em] text-slate-300">
           Phone Number
         </label>
-        <input
-          type="tel"
-          inputMode="tel"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          placeholder="e.g. 98765 43210"
-          className="w-full rounded-2xl border border-[#d4af37]/20 bg-[#102742] px-4 py-3 text-sm font-medium text-white placeholder:text-slate-400 focus:border-[#d4af37] focus:bg-[#102742] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20 transition"
-        />
+        <div className="flex gap-2">
+          <select
+            value={countryCode}
+            onChange={(e) => { setCountryCode(e.target.value); setError(''); }}
+            aria-label="Country"
+            className="w-[7.5rem] shrink-0 rounded-2xl border border-[#d4af37]/20 bg-[#102742] px-2 py-3 text-sm font-medium text-white focus:border-[#d4af37] focus:bg-[#102742] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20 transition"
+          >
+            {COUNTRIES.map((country) => (
+              <option key={country.code} value={country.code}>
+                {country.dialCode} {country.name}
+              </option>
+            ))}
+          </select>
+          <div className="relative flex-1">
+            <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-400">
+              {dialCode}
+            </span>
+            <input
+              type="tel"
+              inputMode="tel"
+              value={localPhone}
+              onChange={(e) => { setLocalPhone(e.target.value); setError(''); }}
+              placeholder="707 123 4567"
+              style={{ paddingLeft: `${dialCode.length * 0.6 + 2.3}rem` }}
+              className="w-full rounded-2xl border border-[#d4af37]/20 bg-[#102742] py-3 pr-4 text-sm font-medium text-white placeholder:text-slate-400 focus:border-[#d4af37] focus:bg-[#102742] focus:outline-none focus:ring-2 focus:ring-[#d4af37]/20 transition"
+            />
+          </div>
+        </div>
       </div>
 
       <div>

@@ -13,6 +13,10 @@ describe('normalizePhoneForWhatsApp', () => {
   it('strips non-digit characters', () => {
     expect(normalizePhoneForWhatsApp('+92 (300) 123-4567')).toBe('923001234567');
   });
+
+  it('trusts an explicit non-Pakistani country code instead of guessing +92', () => {
+    expect(normalizePhoneForWhatsApp('+7 707 123 4567')).toBe('77071234567');
+  });
 });
 
 describe('buildWhatsAppLink', () => {

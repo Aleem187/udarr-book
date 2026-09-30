@@ -92,9 +92,16 @@ export function isDueToday(customer: Customer): boolean {
 }
 
 export function normalizePhoneForWhatsApp(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
+  const trimmed = phone.trim();
+  const digits = trimmed.replace(/\D/g, '');
   if (!digits) {
     throw new Error('Phone number is missing or invalid');
+  }
+
+  // An explicit "+<countrycode>..." number (e.g. from the country selector) already
+  // carries its own country code — trust it instead of guessing a fallback country.
+  if (trimmed.startsWith('+')) {
+    return digits;
   }
 
   if (digits.startsWith('00')) {
