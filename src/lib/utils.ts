@@ -147,7 +147,7 @@ export function buildWhatsAppLink(
         month: 'short',
         year: 'numeric',
       })
-    : 'the recorded date';
+    : 'указанную дату';
 
   const dueToday = givenDate
     ? new Date(givenDate).toDateString() === new Date().toDateString()
@@ -155,7 +155,7 @@ export function buildWhatsAppLink(
 
   const message = paymentDetails
     ? `Hi ${name},\n\nThank you for your payment. We have received ${formatCurrency(paymentDetails.amountPaid, currency)} on ${new Date(paymentDetails.paymentDate ?? new Date().toISOString()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}.\n\nAmount received: ${formatCurrency(paymentDetails.amountPaid, currency)}\nRemaining balance: ${formatCurrency(paymentDetails.remainingBalance, currency)}\n\nThank you for staying with us.`
-    : `Hi ${name},\n\nThis is a friendly reminder from your store. Your outstanding balance is *${formatCurrency(balance, currency)}* and it was given on *${label}*.${dueToday ? '\n\nThis payment is due today. Kindly clear it as soon as possible.' : '\n\nKindly clear the dues at your earliest convenience.'}\n\nThank you!`;
+    : `Здравствуйте, ${name}!\n\nЭто дружеское напоминание от нашего магазина. Ваша задолженность составляет *${formatCurrency(balance, currency)}*, выдана в *${label}*.${dueToday ? '\n\nОплата должна быть произведена сегодня. Пожалуйста, погасите задолженность как можно скорее.' : '\n\nПожалуйста, погасите задолженность в ближайшее удобное время.'}\n\nСпасибо!`;
 
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
@@ -174,7 +174,7 @@ export function buildTransactionShareLink(
     year: 'numeric',
   });
 
-  const typeLabel = transaction.type === 'credit' ? 'Udhaar entry' : 'Payment received';
+  const typeLabel = transaction.type === 'credit' ? 'Долг' : 'Payment received';
   const amountLabel = formatCurrency(transaction.amount, currency);
 
   let message = `Hi ${customerName},\n\n${typeLabel}: ${amountLabel} on ${dateLabel}.`;
