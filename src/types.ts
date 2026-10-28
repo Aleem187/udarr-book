@@ -6,6 +6,7 @@ export interface Transaction {
   paymentMethod?: 'cash' | 'account' | 'card';
   recordedBy?: string;
   date: string;
+  receiptUrl?: string;
 }
 
 export type CurrencyCode = 'KZT' | 'USD';

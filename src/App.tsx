@@ -310,9 +310,16 @@ function Dashboard({ appUser, roster, onSignOut, onRosterChanged }: DashboardPro
     });
   };
 
-  const handleAdd = async (name: string, phone: string, amount: number, date?: string, currency?: Customer['currency']) => {
+  const handleAdd = async (
+    name: string,
+    phone: string,
+    amount: number,
+    date?: string,
+    currency?: Customer['currency'],
+    receiptUrl?: string
+  ) => {
     try {
-      await addOrUpdateCustomer(name, phone, amount, date, currency || 'KZT');
+      await addOrUpdateCustomer(name, phone, amount, date, currency || 'KZT', receiptUrl);
       notifyUsersAboutCredit(name.trim(), `${name.trim()}-${Date.now()}`, amount);
       setDataError('');
       setSheet({ type: 'none' });
@@ -325,11 +332,12 @@ function Dashboard({ appUser, roster, onSignOut, onRosterChanged }: DashboardPro
     amount: number,
     note?: string,
     paymentMethod?: 'cash' | 'account',
-    recordedBy?: string
+    recordedBy?: string,
+    receiptUrl?: string
   ) => {
     if (sheet.type !== 'pay') return;
     try {
-      await recordPayment(sheet.customer.id, amount, note, paymentMethod, recordedBy ?? appUser.name);
+      await recordPayment(sheet.customer.id, amount, note, paymentMethod, recordedBy ?? appUser.name, receiptUrl);
       notifyUsersAboutPayment(sheet.customer.name, sheet.customer.id, amount);
       setDataError('');
     } catch (error) {

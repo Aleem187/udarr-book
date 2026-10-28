@@ -10,6 +10,7 @@ interface TransactionRow {
   payment_method: 'cash' | 'account' | 'card' | null;
   recorded_by: string | null;
   date: string;
+  receipt_url: string | null;
 }
 
 interface CustomerRow {
@@ -23,7 +24,7 @@ interface CustomerRow {
   transactions: TransactionRow[] | null;
 }
 
-const SELECT_QUERY = '*, transactions(id, type, amount, note, payment_method, recorded_by, date)';
+const SELECT_QUERY = '*, transactions(id, type, amount, note, payment_method, recorded_by, date, receipt_url)';
 
 function mapRow(row: CustomerRow): Customer {
   return {
@@ -43,6 +44,7 @@ function mapRow(row: CustomerRow): Customer {
         paymentMethod: t.payment_method ?? undefined,
         recordedBy: t.recorded_by ?? undefined,
         date: t.date,
+        receiptUrl: t.receipt_url ?? undefined,
       })
     ),
   };
@@ -89,7 +91,14 @@ export function useCustomers(enabled: boolean) {
   }, [enabled, refetch]);
 
   const addOrUpdateCustomer = useCallback(
-    async (name: string, phone: string, amount: number, date?: string, currency: CurrencyCode = 'KZT') => {
+    async (
+      name: string,
+      phone: string,
+      amount: number,
+      date?: string,
+      currency: CurrencyCode = 'KZT',
+      receiptUrl?: string
+    ) => {
       const selectedDate = date ? new Date(date).toISOString() : new Date().toISOString();
 
       const { data: existing, error: findError } = await supabase
@@ -126,6 +135,7 @@ export function useCustomers(enabled: boolean) {
           p_type: 'credit',
           p_amount: amount,
           p_date: selectedDate,
+          p_receipt_url: receiptUrl || null,
         });
 
         if (rpcError) {
@@ -158,6 +168,7 @@ export function useCustomers(enabled: boolean) {
           p_type: 'credit',
           p_amount: amount,
           p_date: selectedDate,
+          p_receipt_url: receiptUrl || null,
         });
 
         if (rpcError) {
@@ -178,7 +189,8 @@ export function useCustomers(enabled: boolean) {
       amount: number,
       note?: string,
       paymentMethod?: 'cash' | 'account' | 'card',
-      recordedBy?: string
+      recordedBy?: string,
+      receiptUrl?: string
     ) => {
       const { error } = await supabase.rpc('record_transaction', {
         p_customer_id: customerId,
@@ -187,6 +199,7 @@ export function useCustomers(enabled: boolean) {
         p_note: note || null,
         p_payment_method: paymentMethod || null,
         p_recorded_by: recordedBy?.trim() || null,
+        p_receipt_url: receiptUrl || null,
       });
 
       if (error) {

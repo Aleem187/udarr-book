@@ -1,11 +1,23 @@
 import { useEffect, useState } from 'react';
 import { getLocalDateTimeInputValue } from '@/lib/utils';
 import { COUNTRIES, DEFAULT_COUNTRY_CODE, getCountryByCode } from '@/lib/countries';
+import { ReceiptUpload } from '@/components/ReceiptUpload';
 import type { CurrencyCode } from '@/types';
 
 interface AddCustomerFormProps {
-  onSubmit: (name: string, phone: string, amount: number, date?: string, currency?: CurrencyCode) => void;
+  onSubmit: (
+    name: string,
+    phone: string,
+    amount: number,
+    date?: string,
+    currency?: CurrencyCode,
+    receiptUrl?: string
+  ) => void;
   existingNames: string[];
+}
+
+function randomUploadPrefix(): string {
+  return `pending-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProps) {
@@ -15,6 +27,8 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
   const [amount, setAmount] = useState('');
   const [givenDate, setGivenDate] = useState(() => getLocalDateTimeInputValue(new Date()));
   const [currency, setCurrency] = useState<CurrencyCode>('KZT');
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [uploadPrefix, setUploadPrefix] = useState(randomUploadPrefix);
   const [error, setError] = useState('');
   const [isExisting, setIsExisting] = useState(false);
 
@@ -45,13 +59,15 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
     const digitsOnly = localPhone.replace(/\D/g, '');
     const phone = digitsOnly ? `${dialCode} ${digitsOnly}` : '';
 
-    onSubmit(name.trim(), phone, amt, givenDate, currency);
+    onSubmit(name.trim(), phone, amt, givenDate, currency, receiptUrl || undefined);
     setName('');
     setCountryCode(DEFAULT_COUNTRY_CODE);
     setLocalPhone('');
     setAmount('');
     setGivenDate(getLocalDateTimeInputValue(new Date()));
     setCurrency('KZT');
+    setReceiptUrl(null);
+    setUploadPrefix(randomUploadPrefix());
     setError('');
   };
 
@@ -154,6 +170,8 @@ export function AddCustomerForm({ onSubmit, existingNames }: AddCustomerFormProp
           <option value="USD">US Dollar ($)</option>
         </select>
       </div>
+
+      <ReceiptUpload pathPrefix={uploadPrefix} value={receiptUrl} onChange={setReceiptUrl} />
 
       {error && (
         <p className="text-sm font-medium text-rose-300 animate-fade-in">{error}</p>

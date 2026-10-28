@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildWhatsAppLink, normalizePhoneForWhatsApp, paginateItems } from './utils';
+import { buildTransactionShareLink, buildWhatsAppLink, normalizePhoneForWhatsApp, paginateItems } from './utils';
+import type { Transaction } from '@/types';
 
 describe('normalizePhoneForWhatsApp', () => {
   it('adds +92 for local Pakistani numbers without country code', () => {
@@ -35,6 +36,37 @@ describe('buildWhatsAppLink', () => {
 
   it('throws a clear error when the phone is invalid', () => {
     expect(() => buildWhatsAppLink('', 'Ali', 2500)).toThrow('Phone number is missing or invalid');
+  });
+});
+
+describe('buildTransactionShareLink', () => {
+  it('includes the receipt URL in the shared message when present', () => {
+    const txn: Transaction = {
+      id: 'txn-1',
+      type: 'debit',
+      amount: 5000,
+      date: '2026-10-28T10:00:00.000Z',
+      receiptUrl: 'https://example.supabase.co/storage/v1/object/public/receipts/c1/r1.jpg',
+    };
+
+    const link = buildTransactionShareLink('+7 707 123 4567', 'Ahmed', txn, 'KZT');
+
+    expect(link).toContain('https://wa.me/77071234567');
+    expect(link).toContain(encodeURIComponent('Payment received: ₸5,000'));
+    expect(link).toContain(encodeURIComponent('Receipt: https://example.supabase.co/storage/v1/object/public/receipts/c1/r1.jpg'));
+  });
+
+  it('omits the receipt line when there is no receipt', () => {
+    const txn: Transaction = {
+      id: 'txn-2',
+      type: 'credit',
+      amount: 1000,
+      date: '2026-10-28T10:00:00.000Z',
+    };
+
+    const link = buildTransactionShareLink('+7 707 123 4567', 'Ahmed', txn, 'KZT');
+
+    expect(link).not.toContain(encodeURIComponent('Receipt:'));
   });
 });
 

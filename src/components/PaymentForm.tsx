@@ -3,6 +3,7 @@ import { MessageCircle } from 'lucide-react';
 import type { Customer } from '@/types';
 import { formatCurrency, getCurrencySymbol } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import { ReceiptUpload } from '@/components/ReceiptUpload';
 
 interface PaymentFormProps {
   customer: Customer;
@@ -12,13 +13,18 @@ interface PaymentFormProps {
     amount: number,
     note?: string,
     paymentMethod?: 'cash' | 'account',
-    recordedBy?: string
+    recordedBy?: string,
+    receiptUrl?: string
   ) => void;
   onWhatsApp?: (paymentDetails: {
     amountPaid: number;
     paymentDate: string;
     remainingBalance: number;
   }) => void;
+}
+
+function randomUploadPrefix(): string {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function PaymentForm({
@@ -32,6 +38,8 @@ export function PaymentForm({
   const [note, setNote] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'account' | 'card'>('cash');
   const [recordedBy, setRecordedBy] = useState(defaultRecorderName);
+  const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
+  const [uploadPrefix, setUploadPrefix] = useState(randomUploadPrefix);
   const [error, setError] = useState('');
   const [isRedirectingToCheckout, setIsRedirectingToCheckout] = useState(false);
   const [paymentSummary, setPaymentSummary] = useState<{
@@ -83,11 +91,19 @@ export function PaymentForm({
       remainingBalance: Math.max(customer.balance - amt, 0),
     };
 
-    onSubmit(amt, note.trim() || undefined, paymentMethod, recordedBy.trim() || defaultRecorderName || undefined);
+    onSubmit(
+      amt,
+      note.trim() || undefined,
+      paymentMethod,
+      recordedBy.trim() || defaultRecorderName || undefined,
+      receiptUrl || undefined
+    );
     setAmount('');
     setNote('');
     setPaymentMethod('cash');
     setRecordedBy(defaultRecorderName);
+    setReceiptUrl(null);
+    setUploadPrefix(randomUploadPrefix());
     setError('');
     setCtaError('');
     setPaymentSummary(nextSummary);
@@ -226,6 +242,8 @@ export function PaymentForm({
           ))}
         </datalist>
       </div>
+
+      <ReceiptUpload pathPrefix={`${customer.id}/${uploadPrefix}`} value={receiptUrl} onChange={setReceiptUrl} />
 
       {error && (
         <p className="rounded-2xl border border-rose-400/25 bg-rose-500/10 px-3 py-2 text-sm font-medium text-rose-200 animate-fade-in">

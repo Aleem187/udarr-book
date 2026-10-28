@@ -1,4 +1,4 @@
-import type { Customer, CurrencyCode } from '@/types';
+import type { Customer, CurrencyCode, Transaction } from '@/types';
 
 export function getCurrencySymbol(currency: CurrencyCode = 'KZT'): string {
   if (currency === 'USD') return '$';
@@ -156,6 +156,35 @@ export function buildWhatsAppLink(
   const message = paymentDetails
     ? `Hi ${name},\n\nThank you for your payment. We have received ${formatCurrency(paymentDetails.amountPaid, currency)} on ${new Date(paymentDetails.paymentDate ?? new Date().toISOString()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}.\n\nAmount received: ${formatCurrency(paymentDetails.amountPaid, currency)}\nRemaining balance: ${formatCurrency(paymentDetails.remainingBalance, currency)}\n\nThank you for staying with us.`
     : `Hi ${name},\n\nThis is a friendly reminder from your store. Your outstanding balance is *${formatCurrency(balance, currency)}* and it was given on *${label}*.${dueToday ? '\n\nThis payment is due today. Kindly clear it as soon as possible.' : '\n\nKindly clear the dues at your earliest convenience.'}\n\nThank you!`;
+
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
+}
+
+export function buildTransactionShareLink(
+  phone: string,
+  customerName: string,
+  transaction: Transaction,
+  currency: CurrencyCode = 'KZT'
+): string {
+  const digits = normalizePhoneForWhatsApp(phone);
+
+  const dateLabel = new Date(transaction.date).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+
+  const typeLabel = transaction.type === 'credit' ? 'Udhaar entry' : 'Payment received';
+  const amountLabel = formatCurrency(transaction.amount, currency);
+
+  let message = `Hi ${customerName},\n\n${typeLabel}: ${amountLabel} on ${dateLabel}.`;
+  if (transaction.note) {
+    message += `\nNote: ${transaction.note}`;
+  }
+  if (transaction.receiptUrl) {
+    message += `\n\nReceipt: ${transaction.receiptUrl}`;
+  }
+  message += `\n\nThank you!`;
 
   return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`;
 }
